@@ -137,9 +137,317 @@ protected:
     virtual void nodeSwap( AVLNode<Key,Value>* n1, AVLNode<Key,Value>* n2);
 
     // Add helper functions here
+    void rotateRight(AVLNode<Key, Value>* node);
+    void rotateLeft(AVLNode<Key, Value>* node);
 
-
+    void insertionFix(AVLNode<Key, Value>* p, AVLNode<Key, Value>* v);
+    void removalFix(AVLNode<Key, Value>* node, int ndiff);
 };
+
+template<typename Key, typename Value>
+void AVLTree<Key, Value>::rotateRight(AVLNode<Key, Value>* node)
+{
+  // AVL rotates around a subtree
+  if(node == nullptr) { return; }
+
+  AVLNode<Key, Value>* leftChild = node->getLeft();
+  // changing the node's left child & updating parent-child relationship
+  node->setLeft(leftChild->getRight());    
+  if(leftChild->getRight() != nullptr) {
+    leftChild->getRight()->setParent(node);
+  }
+  leftChild->setRight(node);
+
+  // left child becomes root of subtree
+  leftChild->setParent(node->getParent());
+  if(node->getParent() == nullptr)
+  {
+    BinarySearchTree<Key, Value>::root_ = leftChild;
+  }
+  else if(node->getParent()->getLeft() == node)
+  {
+    node->getParent()->setLeft(leftChild);
+  }
+  else
+  {
+    node->getParent()->setRight(leftChild);
+  }
+  node->setParent(leftChild);
+
+  return;
+}
+
+template<typename Key, typename Value>
+void AVLTree<Key, Value>::rotateLeft(AVLNode<Key, Value>* node)
+{
+  // AVL rotates around a subtree
+  if(node == nullptr) { return; }
+
+  AVLNode<Key, Value>* rightChild = node->getRight();
+  // changing the node's right child & updating parent-child relationship
+  node->setRight(rightChild->getLeft());    
+  if(rightChild->getLeft() != nullptr) {
+    rightChild->getLeft()->setParent(node);
+  }
+  rightChild->setLeft(node);
+
+  // right child becomes root of subtree
+  rightChild->setParent(node->getParent());
+  if(node->getParent() == nullptr)
+  {
+    BinarySearchTree<Key, Value>::root_ = rightChild;
+  }
+  else if(node->getParent()->getLeft() == node)
+  {
+    node->getParent()->setLeft(rightChild);
+  }
+  else
+  {
+    node->getParent()->setRight(rightChild);
+  }
+  node->setParent(rightChild);
+
+  return;
+}
+
+template<typename Key, typename Value>
+void AVLTree<Key, Value>::insertionFix(AVLNode<Key, Value>* p, AVLNode<Key, Value>* b)
+{
+  if(p == nullptr || p->getParent() == nullptr)
+  {
+    return;
+  }
+
+  AVLNode<Key, Value>* g = p->getParent();
+  // Assume p is left child of g
+  if(g->getLeft() == p)
+  {
+    g->updateBalance(-1);
+    // Case 1: b(g) == 0, return
+    if(g->getBalance() == 0)
+    {
+      return;
+    }
+    else if(g->getBalance() == -1)
+    {
+      insertionFix(g, p);
+    }
+    else if(g->getBalance() == -2)
+    {
+      if(p->getBalance() == -1)
+      {
+        rotateRight(g);
+        p->setBalance(0);
+        g->setBalance(0);
+      }
+      if(p->getBalance() == 1)
+      {
+        rotateLeft(p);
+        rotateRight(g);
+
+        if(b->getBalance() == -1)
+        {
+          p->setBalance(0);
+          g->setBalance(1);
+          b->setBalance(0);
+        }
+        else if(b->getBalance() == 0)
+        {
+          p->setBalance(0);
+          g->setBalance(0);
+          b->setBalance(0);
+        }
+        else if(b->getBalance() == 1)
+        {
+          p->setBalance(-1);
+          g->setBalance(0);
+          b->setBalance(0);
+        }
+      }
+    }
+  }
+
+  else
+  {
+    g->updateBalance(1);
+    // Case 1: b(g) == 0, return
+    if(g->getBalance() == 0)
+    {
+      return;
+    }
+    else if(g->getBalance() == 1)
+    {
+      insertionFix(g, p);
+    }
+    else if(g->getBalance() == 2)
+    {
+      if(p->getBalance() == 1)
+      {
+        rotateLeft(g);
+        p->setBalance(0);
+        g->setBalance(0);
+      }
+      if(p->getBalance() == -1)
+      {
+        rotateRight(p);
+        rotateLeft(g);
+
+        if(b->getBalance() == 1)
+        {
+          p->setBalance(0);
+          g->setBalance(-1);
+          b->setBalance(0);
+        }
+        else if(b->getBalance() == 0)
+        {
+          p->setBalance(0);
+          g->setBalance(0);
+          b->setBalance(0);
+        }
+        else if(b->getBalance() == -1)
+        {
+          p->setBalance(1);
+          g->setBalance(0);
+          b->setBalance(0);
+        }
+      }
+    }
+  }
+}
+
+
+template<typename Key, typename Value>
+void AVLTree<Key, Value>::removalFix(AVLNode<Key, Value>* node, int diff)
+{
+  if(node == nullptr){ return; }
+  AVLNode<Key, Value>* p = node->getParent();
+  int ndiff;
+  if(p != nullptr && p->getLeft() == node) {
+    ndiff = 1;
+  }
+  else {
+    ndiff = -1;
+  }
+
+  // Assume diff = -1
+  if(diff == -1)
+  {
+    // Case 1: b(n) + diff == -2
+    if(node->getBalance() + diff == -2)
+    {
+      AVLNode<Key, Value>* c = node->getLeft();
+      // Case 1a: b(c) == -1 (zig zig case)
+      if(c->getBalance() == -1) {
+        rotateRight(node);
+        node->setBalance(0);
+        c->setBalance(0);
+        removalFix(p, ndiff);
+      }
+      // Case 1b: b(c) == 0 (zig zig case)
+      else if(c->getBalance() == 0)
+      {
+        rotateRight(node);
+        node->setBalance(-1);
+        c->setBalance(1);
+        return;
+      }
+
+      // Case 1c: b(c) == +1 (zig zag case)
+      else if(c->getBalance() == 1)
+      {
+        AVLNode<Key, Value>* g = c->getRight();
+        rotateLeft(c); rotateRight(node);
+        
+        if(g->getBalance() == 1)
+        {
+          node->setBalance(0); c->setBalance(-1); g->setBalance(0);
+        }
+        else if(g->getBalance() == 0)
+        {
+          node->setBalance(0); c->setBalance(0); g->setBalance(0);
+        }
+        else if(g->getBalance() == -1)
+        {
+          node->setBalance(1); c->setBalance(0); g->setBalance(0);
+        }
+
+        removalFix(p, ndiff);
+      }
+
+    }
+
+    else if(node->getBalance() + diff == -1)
+    {
+      node->setBalance(-1);
+      return;
+    }
+    else if(node->getBalance() + diff == 0)
+    {
+      node->setBalance(0);
+      removalFix(p, ndiff);
+    }
+  }
+  
+  // Mirror case when diff = +1
+  else if(diff == 1)
+  {
+    // Case 1: b(n) + diff == 2
+    if(node->getBalance() + diff == 2)
+    {
+      AVLNode<Key, Value>* c = node->getRight();
+      // Case 1a: b(c) == 1 (zig zig case)
+      if(c->getBalance() == 1) {
+        rotateLeft(node);
+        node->setBalance(0);
+        c->setBalance(0);
+        removalFix(p, ndiff);
+      }
+      // Case 1b: b(c) == 0 (zig zig case)
+      else if(c->getBalance() == 0)
+      {
+        rotateLeft(node);
+        node->setBalance(1);
+        c->setBalance(-1);
+        return;
+      }
+
+      // Case 1c: b(c) == -1 (zig zag case)
+      else if(c->getBalance() == -1)
+      {
+        AVLNode<Key, Value>* g = c->getLeft();
+        rotateRight(c); rotateLeft(node);
+        
+        if(g->getBalance() == -1)
+        {
+          node->setBalance(0); c->setBalance(1); g->setBalance(0);
+        }
+        else if(g->getBalance() == 0)
+        {
+          node->setBalance(0); c->setBalance(0); g->setBalance(0);
+        }
+        else if(g->getBalance() == 1)
+        {
+          node->setBalance(-1); c->setBalance(0); g->setBalance(0);
+        }
+
+        removalFix(p, ndiff);
+      }
+
+    }
+
+    else if(node->getBalance() + diff == 1)
+    {
+      node->setBalance(1);
+      return;
+    }
+    else if(node->getBalance() + diff == 0)
+    {
+      node->setBalance(0);
+      removalFix(p, ndiff);
+    }
+  }
+}
+
 
 /*
  * Recall: If key is already in the tree, you should 
@@ -149,6 +457,62 @@ template<class Key, class Value>
 void AVLTree<Key, Value>::insert (const std::pair<const Key, Value> &new_item)
 {
     // TODO
+    AVLNode<Key, Value>* node = new AVLNode<Key, Value>(new_item.first, new_item.second, nullptr);
+    if(BinarySearchTree<Key, Value>::root_ == nullptr)
+    {
+      BinarySearchTree<Key, Value>::root_ = node;
+      return;
+    }
+
+    AVLNode<Key, Value>* temp = static_cast<AVLNode<Key, Value>*>(BinarySearchTree<Key, Value>::root_);
+    AVLNode<Key, Value>* lastNode = nullptr;
+    while(temp != nullptr)
+    {
+      lastNode = temp;
+      if(new_item.first > temp->getKey())
+      {
+        temp = temp->getRight();
+      }
+      else if(new_item.first < temp->getKey())
+      {
+        temp = temp->getLeft();
+      }
+      else
+      {
+        temp->setValue(new_item.second);
+        delete node;
+        return;
+      }
+    }
+
+    node->setParent(lastNode);
+    if(node->getKey() < lastNode->getKey())
+    {
+      lastNode->setLeft(node);
+    }
+    else
+    {
+      lastNode->setRight(node);
+    }
+
+
+    if(lastNode->getBalance() != 0)
+    {
+      lastNode->setBalance(0);
+    }
+    else
+    {
+      if(lastNode->getLeft() == node)
+      {
+        lastNode->setBalance(-1);
+      }
+      else
+      {
+        lastNode->setBalance(1);
+      }
+
+      insertionFix(lastNode, node);
+    }
 }
 
 /*
@@ -159,6 +523,51 @@ template<class Key, class Value>
 void AVLTree<Key, Value>:: remove(const Key& key)
 {
     // TODO
+    Node<Key, Value>* node = (this->internalFind(key));
+    // node not in the AVL tree
+    if(node == nullptr){
+      return;
+    }
+
+    // node has two children
+    AVLNode<Key, Value>* pred = nullptr;
+    if(node->getLeft() != nullptr && node->getRight() != nullptr)
+    {
+      pred = static_cast<AVLNode<Key,Value>*>(this->predecessor(*this, node));
+      nodeSwap(static_cast<AVLNode<Key, Value>*>(node), pred);
+    }
+
+    // node has 0 or 1 children guaranteed
+    int diff;
+    Node<Key, Value>* parent = node->getParent();
+    if(parent != nullptr){
+      if(parent->getLeft() == node)
+      {
+        diff = 1;
+      }
+      else
+      {
+        diff = -1;
+      }
+    }
+
+    if(node->getLeft() == nullptr && node->getRight() == nullptr)
+    {
+      this->fixParent(node->getParent(), node, nullptr);
+
+    }
+    else if(node->getRight() == nullptr)
+    {
+      this->fixParent(node->getParent(), node, node->getLeft());
+    }
+    else if(node->getLeft() == nullptr)
+    {
+      this->fixParent(node->getParent(), node, node->getRight());
+    }
+    
+    delete node;
+    removalFix(static_cast<AVLNode<Key, Value>*>(parent), diff);
+
 }
 
 template<class Key, class Value>
